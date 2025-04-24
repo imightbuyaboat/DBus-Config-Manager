@@ -1,0 +1,16 @@
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: Inline
+DerivePointerAlignment: false
+PointerAlignment: Left
+SortIncludes: true
+IncludeBlocks: Preserve
+BreakBeforeBraces: Attach
+AlwaysBreakAfterReturnType: None
+AllowShortIfStatementsOnASingleLine: true
+SpacesBeforeTrailingComments: 1
+ReflowComments: true
+SpaceBeforeParens: ControlStatements
