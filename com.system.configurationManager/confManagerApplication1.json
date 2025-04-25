@@ -1,4 +1,4 @@
 {
-    "Timeout": "10",
+    "Timeout": 10,
     "TimeoutPhrase": "timeout"
 }
