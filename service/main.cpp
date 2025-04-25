@@ -6,7 +6,9 @@
 int main() {
     // подключаемся к сессионной шине DBus и задаем имя сервиса
     auto connection = sdbus::createSessionBusConnection();
-    connection->requestName("com.system.configurationManager");
+
+    const char* serviceName = "com.system.configurationManager";
+    connection->requestName(sdbus::ServiceName(serviceName));
 
     // инициализируем объекты приложений из конфигурационныз файлов
     std::map<std::string, std::unique_ptr<ApplicationConfigObject>> appObjects;

@@ -5,8 +5,10 @@ void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
     dict[key] = value;
 
     // создаем и отправляем сигнал об изменении настроек
-    auto signal = object->createSignal("com.system.configurationManager.Application.Configuration",
-                                       "configurationChanged");
+    const char* interfaceName = "com.system.configurationManager.Application.Configuration";
+    const char* signalName = "configurationChanged";
+    auto signal = object->createSignal(sdbus::InterfaceName(interfaceName),
+                                       sdbus::SignalName(signalName));
     signal << dict;
     object->emitSignal(signal);
 
@@ -77,23 +79,24 @@ void ApplicationConfigObject::ReadConfiguration(const std::string filePath) {
 ApplicationConfigObject::ApplicationConfigObject(std::unique_ptr<sdbus::IObject> obj,
                                                  const std::string& filePath)
     : object(std::move(obj)), path(filePath) {
+    
+    const char* interfaceName = "com.system.configurationManager.Application.Configuration";
+
     // регистрируем метод ChangeConfiguration
-    object->registerMethod("ChangeConfiguration")
-        .onInterface("com.system.configurationManager.Application.Configuration")
-        .implementedAs([this](const std::string& key, const sdbus::Variant& value) {
-            return this->ChangeConfiguration(key, value);
-        });
+    const char* methodName = "ChangeConfiguration";
+    object->addVTable(sdbus::registerMethod(sdbus::MethodName(methodName)).implementedAs([this](const std::string& key, const sdbus::Variant& value) {
+        return this->ChangeConfiguration(key, value);
+    })).forInterface(sdbus::InterfaceName(interfaceName));
 
     // регистрируем метод GetConfiguration
-    object->registerMethod("GetConfiguration")
-        .onInterface("com.system.configurationManager.Application.Configuration")
-        .implementedAs([this]() { return this->GetConfiguration(); });
+    methodName = "GetConfiguration";
+    object->addVTable(sdbus::registerMethod(sdbus::MethodName(methodName)).implementedAs([this]() { 
+        return this->GetConfiguration(); 
+    })).forInterface(sdbus::InterfaceName(interfaceName));
 
     // регистрируем сигнал configurationChanged
-    object->registerSignal("configurationChanged")
-        .onInterface("com.system.configurationManager.Application.Configuration");
-
-    object->finishRegistration();
+    const char* signalName = "configurationChanged";
+    object->addVTable(sdbus::registerSignal(sdbus::SignalName(signalName))).forInterface(sdbus::InterfaceName(interfaceName));
 
     // читаем файл конфигурации приложения
     ReadConfiguration(filePath);
@@ -112,8 +115,8 @@ void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>
 
                 try {
                     // создаем объект DBus для текущего приложения
-                    auto object = sdbus::createObject(
-                        conn, "/com/system/configurationManager/Application/" + applicationName);
+                    std::string objectPath = "/com/system/configurationManager/Application/" + applicationName;
+                    auto object = sdbus::createObject(conn, sdbus::ObjectPath(objectPath));
 
                     // создаем объект приложения
                     appObjects[entry.path()] =
