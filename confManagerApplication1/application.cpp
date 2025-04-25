@@ -1,36 +1,36 @@
 #include "application.h"
 
 void Application::Loop() {
-    //бесконечный цикл
-    while(true) {
-        //выводим фразу и определяем время сна      
+    // бесконечный цикл
+    while (true) {
+        // выводим фразу и определяем время сна
         configMutex.lock();
         uint32_t timeout = Timeout;
         std::cout << TimeoutPhrase << std::endl;
         configMutex.unlock();
 
-        //засыпаем на timeout секунд
+        // засыпаем на timeout секунд
         std::this_thread::sleep_for(std::chrono::seconds(timeout));
     }
 }
 
-Application::Application(const std::string& filePath, sdbus::IConnection& conn) 
-: path(filePath) {
+Application::Application(const std::string& filePath, sdbus::IConnection& conn) : path(filePath) {
     ReadConfigFromFile();
 
-    //создаем поток с бесконечным циклом
+    // создаем поток с бесконечным циклом
     std::thread(&Application::Loop, this).detach();
 
     const char* serviceName = "com.system.configurationManager";
-    const char* objectPath = "com.system.configurationManager.Application.confManagerApplication1";
+    const char* objectPath = "/com/system/configurationManager/Application/confManagerApplication1";
     const char* signalName = "configurationChanged";
     const char* interfaceName = "com.system.configurationManager.Application.Configuration";
 
-    //создаем прокси объекта приложения
-    auto proxy = sdbus::createProxy(conn, sdbus::ServiceName(serviceName), sdbus::ObjectPath(objectPath));
-    proxy->uponSignal(sdbus::SignalName(signalName)).onInterface(sdbus::InterfaceName(interfaceName))
-        .call([this](){ this->ReadConfigFromFile(); });
-
+    // создаем прокси объекта приложения
+    proxy =
+        sdbus::createProxy(conn, sdbus::ServiceName(serviceName), sdbus::ObjectPath(objectPath));
+    proxy->uponSignal(sdbus::SignalName(signalName))
+        .onInterface(sdbus::InterfaceName(interfaceName))
+        .call([this]() { this->ReadConfigFromFile(); });
 }
 
 void Application::ReadConfigFromFile() {
@@ -49,14 +49,14 @@ void Application::ReadConfigFromFile() {
     for (const auto& key : root.getMemberNames()) {
         const Json::Value& val = root[key];
 
-        if(key == "Timeout") {
+        if (key == "Timeout") {
             timeout = static_cast<uint32_t>(val.asUInt());
-        } else if(key == "TimeoutPhrase") {
+        } else if (key == "TimeoutPhrase") {
             timeoutPhrase = val.asString();
         }
     }
 
-    //проверяем правильные ли данные из файла конфигурации
+    // проверяем правильные ли данные из файла конфигурации
     if (timeout == 0 || timeoutPhrase == "") {
         throw std::runtime_error("Invalid configuration in file: " + path);
     }
