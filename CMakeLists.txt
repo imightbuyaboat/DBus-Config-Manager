@@ -7,4 +7,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 find_package(sdbus-c++ REQUIRED)
 
 add_subdirectory(service)
-#add_subdirectory(client)
+add_subdirectory(confManagerApplication1)
