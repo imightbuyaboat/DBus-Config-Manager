@@ -57,7 +57,7 @@ void ApplicationConfigObject::SaveConfiguration() {
     }
 }
 
-void ApplicationConfigObject::ReadConfiguration(const std::string filePath) {
+void ApplicationConfigObject::ReadConfiguration(const std::string& filePath) {
     std::ifstream file(filePath);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + filePath);
@@ -118,9 +118,9 @@ ApplicationConfigObject::ApplicationConfigObject(std::unique_ptr<sdbus::IObject>
 }
 
 void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>& appObjects,
-                 sdbus::IConnection& conn) {
+                 sdbus::IConnection& conn, const std::string& folderPath) {
     try {
-        for (const auto& entry : fs::directory_iterator(ConfigFolderPath)) {
+        for (const auto& entry : fs::directory_iterator(folderPath)) {
             // если текущий файл не является папкой и имеет расширение .json
             if (fs::is_regular_file(entry.status()) && entry.path().extension() == ".json") {
                 std::string applicationName = entry.path().stem().string();

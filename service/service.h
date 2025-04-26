@@ -8,8 +8,6 @@
 
 namespace fs = std::filesystem;
 
-const std::string ConfigFolderPath = "../com.system.configurationManager/";
-
 // объект приложения
 class ApplicationConfigObject {
    private:
@@ -27,7 +25,7 @@ class ApplicationConfigObject {
     void SaveConfiguration();
 
     // чтение настроек из файла конфигурации json
-    void ReadConfiguration(const std::string filePath);
+    void ReadConfiguration(const std::string& filePath);
 
    public:
     ApplicationConfigObject(std::unique_ptr<sdbus::IObject> obj, const std::string& filePath);
@@ -36,4 +34,4 @@ class ApplicationConfigObject {
 
 // инициализация и регистрация в DBus приложений
 void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>& appObjects,
-                 sdbus::IConnection& conn);
+                 sdbus::IConnection& conn, const std::string& folderPath);
