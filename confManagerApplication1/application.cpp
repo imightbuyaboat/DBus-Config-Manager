@@ -10,7 +10,7 @@ void Application::Loop() {
         configMutex.unlock();
 
         // засыпаем на timeout секунд
-        std::this_thread::sleep_for(std::chrono::seconds(timeout));
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
     }
 }
 
@@ -18,7 +18,7 @@ Application::Application(const std::string& filePath, sdbus::IConnection& conn) 
     ReadConfigFromFile();
 
     // создаем поток с бесконечным циклом
-    std::thread(&Application::Loop, this).detach();
+    loopThread = std::thread(&Application::Loop, this);
 
     const char* serviceName = "com.system.configurationManager";
     const char* objectPath = "/com/system/configurationManager/Application/confManagerApplication1";
@@ -31,6 +31,12 @@ Application::Application(const std::string& filePath, sdbus::IConnection& conn) 
     proxy->uponSignal(sdbus::SignalName(signalName))
         .onInterface(sdbus::InterfaceName(interfaceName))
         .call([this]() { this->ReadConfigFromFile(); });
+}
+
+Application::~Application() {
+    if (loopThread.joinable()) {
+        loopThread.join();
+    }
 }
 
 void Application::ReadConfigFromFile() {

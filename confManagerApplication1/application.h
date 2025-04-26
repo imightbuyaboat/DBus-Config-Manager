@@ -12,6 +12,7 @@ class Application {
     std::string path; // путь конфигурационного файла
     std::mutex configMutex; // мьютекс для доступа к переменным конфигурации
     std::unique_ptr<sdbus::IProxy> proxy; // прокси
+    std::thread loopThread;               // поток с бексонечным циклом
 
     uint32_t Timeout;
     std::string TimeoutPhrase;
@@ -21,6 +22,7 @@ class Application {
 
    public:
     Application(const std::string& filePath, sdbus::IConnection& conn);
+    ~Application();
 
     // чтение конфигурации из файла
     void ReadConfigFromFile();
