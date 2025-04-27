@@ -27,9 +27,9 @@ void Application::configurationChangedSignalHandler(std::map<std::string, sdbus:
         }
     }
 
-    // проверяем правильные ли данные из файла конфигурации
+    // проверяем правильные ли данные переданы в теле сигнала
     if (newTimeout == 0 || newTimeoutPhrase == "") {
-        throw std::runtime_error("Invalid configuration in file: " + path);
+        throw std::runtime_error("Invalid configuration in body of signal: " + path);
     }
 
     configMutex.lock();
@@ -57,7 +57,13 @@ Application::Application(const std::string& filePath, sdbus::IConnection& conn) 
     proxy->uponSignal(sdbus::SignalName(signalName))
         .onInterface(sdbus::InterfaceName(interfaceName))
         .call([this](std::map<std::string, sdbus::Variant> dict) {
-            this->configurationChangedSignalHandler(dict);
+            try {
+                this->configurationChangedSignalHandler(dict);
+            } catch (const std::exception& e) {
+                std::cerr << "Error while handling configurationChanged signal: " << e.what()
+                          << std::endl;
+                exit(1);
+            }
         });
 }
 

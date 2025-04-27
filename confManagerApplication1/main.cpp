@@ -16,10 +16,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // подключаемся к сессионной шине DBus
-    auto connection = sdbus::createSessionBusConnection();
+    try {
+        // подключаемся к сессионной шине DBus
+        auto connection = sdbus::createSessionBusConnection();
 
-    Application app(ConfigFilePath, *connection);
+        Application app(ConfigFilePath, *connection);
 
-    connection->enterEventLoop();
+        connection->enterEventLoop();
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal error: " << e.what() << std::endl;
+        return 1;
+    }
 }
