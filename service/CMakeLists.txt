@@ -5,10 +5,14 @@ add_executable(configurationManager
 
 target_include_directories(configurationManager PRIVATE
     ${PROJECT_SOURCE_DIR}/shared
-    /usr/include/jsoncpp
+    ${SDBUS_C++_INCLUDE_DIRS}
+    ${JSONCPP_INCLUDE_DIRS}
 )
 
 target_link_libraries(configurationManager
-    sdbus-c++
-    jsoncpp
+    ${SDBUS_C++_LIBRARIES}
+    ${JSONCPP_LIBRARIES}
 )
+
+target_compile_options(configurationManager PRIVATE ${SDBUS_C++_CFLAGS})
+target_compile_options(configurationManager PRIVATE ${JSONCPP_CFLAGS})
