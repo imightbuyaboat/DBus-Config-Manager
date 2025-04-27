@@ -2,6 +2,20 @@
 
 void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
                                                   const sdbus::Variant& value) {
+    // проверяем существует ли в словаре ключ key
+    auto it = dict.find(key);
+    if (it == dict.end()) {
+        throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
+                           "Incorrect key: " + key);
+    }
+
+    // проверяем совпадают ли типы старого и нового значений параметра key
+    const sdbus::Variant& oldValue = it->second;
+    if (oldValue.peekValueType() != value.peekValueType()) {
+        throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
+                           "Incorrect value for the key: " + key);
+    }
+
     dict[key] = value;
 
     // сохраняем измененную конфигурацию в файл
@@ -17,6 +31,7 @@ void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
     const char* signalName = "configurationChanged";
     auto signal =
         object->createSignal(sdbus::InterfaceName(interfaceName), sdbus::SignalName(signalName));
+    signal << dict;
     object->emitSignal(signal);
 }
 
