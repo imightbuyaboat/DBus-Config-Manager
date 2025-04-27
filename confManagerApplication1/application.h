@@ -2,6 +2,7 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -19,6 +20,9 @@ class Application {
 
     // функция цикла вывода фразы в консоль
     void Loop();
+
+    // обработчик сигнала configurationChanged
+    void configurationChangedSignalHandler(std::map<std::string, sdbus::Variant>& dict);
 
    public:
     Application(const std::string& filePath, sdbus::IConnection& conn);

@@ -9,9 +9,33 @@ void Application::Loop() {
         std::cout << TimeoutPhrase << std::endl;
         configMutex.unlock();
 
-        // засыпаем на timeout секунд
+        // засыпаем на timeout миллисекунд
         std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
     }
+}
+
+void Application::configurationChangedSignalHandler(std::map<std::string, sdbus::Variant>& dict) {
+    uint32_t newTimeout = 0;
+    std::string newTimeoutPhrase = "";
+
+    // определяем новые значения параметров
+    for (const auto& [key, value] : dict) {
+        if (key == "Timeout") {
+            newTimeout = value.get<uint32_t>();
+        } else if (key == "TimeoutPhrase") {
+            newTimeoutPhrase = value.get<std::string>();
+        }
+    }
+
+    // проверяем правильные ли данные из файла конфигурации
+    if (newTimeout == 0 || newTimeoutPhrase == "") {
+        throw std::runtime_error("Invalid configuration in file: " + path);
+    }
+
+    configMutex.lock();
+    this->Timeout = newTimeout;
+    this->TimeoutPhrase = newTimeoutPhrase;
+    configMutex.unlock();
 }
 
 Application::Application(const std::string& filePath, sdbus::IConnection& conn) : path(filePath) {
@@ -28,9 +52,13 @@ Application::Application(const std::string& filePath, sdbus::IConnection& conn) 
     // создаем прокси объекта приложения
     proxy =
         sdbus::createProxy(conn, sdbus::ServiceName(serviceName), sdbus::ObjectPath(objectPath));
+
+    // подписываемся на сигнал configurationChanged
     proxy->uponSignal(sdbus::SignalName(signalName))
         .onInterface(sdbus::InterfaceName(interfaceName))
-        .call([this]() { this->ReadConfigFromFile(); });
+        .call([this](std::map<std::string, sdbus::Variant> dict) {
+            this->configurationChangedSignalHandler(dict);
+        });
 }
 
 Application::~Application() {
@@ -48,27 +76,27 @@ void Application::ReadConfigFromFile() {
     Json::Value root;
     file >> root;
 
-    uint32_t timeout = 0;
-    std::string timeoutPhrase = "";
+    uint32_t newTimeout = 0;
+    std::string newTimeoutPhrase = "";
 
     // парсим json и сохраняем настройки конфигурации
     for (const auto& key : root.getMemberNames()) {
         const Json::Value& val = root[key];
 
         if (key == "Timeout") {
-            timeout = static_cast<uint32_t>(val.asUInt());
+            newTimeout = static_cast<uint32_t>(val.asUInt());
         } else if (key == "TimeoutPhrase") {
-            timeoutPhrase = val.asString();
+            newTimeoutPhrase = val.asString();
         }
     }
 
     // проверяем правильные ли данные из файла конфигурации
-    if (timeout == 0 || timeoutPhrase == "") {
+    if (newTimeout == 0 || newTimeoutPhrase == "") {
         throw std::runtime_error("Invalid configuration in file: " + path);
     }
 
     configMutex.lock();
-    this->Timeout = timeout;
-    this->TimeoutPhrase = timeoutPhrase;
+    this->Timeout = newTimeout;
+    this->TimeoutPhrase = newTimeoutPhrase;
     configMutex.unlock();
 }
