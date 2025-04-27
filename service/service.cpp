@@ -11,7 +11,10 @@ void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
 
     // проверяем совпадают ли типы старого и нового значений параметра key
     const sdbus::Variant& oldValue = it->second;
-    if (oldValue.peekValueType() != value.peekValueType()) {
+    std::string oldType = oldValue.peekValueType();
+    std::string newType = value.peekValueType();
+
+    if (oldType != newType) {
         throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
                            "Incorrect value for the key: " + key);
     }
