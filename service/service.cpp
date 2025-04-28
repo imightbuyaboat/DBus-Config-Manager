@@ -25,6 +25,9 @@ void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
     try {
         SaveConfiguration();
     } catch (const std::exception& e) {
+        // возвращаем старое значение параметра в словарь
+        dict[key] = oldValue;
+
         throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
                            "Failed to save configuration: " + std::string(e.what()));
     }
@@ -52,20 +55,14 @@ void ApplicationConfigObject::SaveConfiguration() {
 
     // формируем json с настройками конфигураций приложения
     for (const auto& [key, value] : dict) {
-        try {
-            if (value.containsValueOfType<std::string>()) {
-                root[key] = value.get<std::string>();
-            } else if (value.containsValueOfType<uint32_t>()) {
-                root[key] = value.get<uint32_t>();
-            } else if (value.containsValueOfType<int32_t>()) {
-                root[key] = value.get<int32_t>();
-            } else if (value.containsValueOfType<bool>()) {
-                root[key] = value.get<bool>();
-            } else {
-                std::cerr << "Unknown type: " << key << std::endl;
-            }
-        } catch (const std::bad_cast& e) {
-            std::cerr << "Failed to extract value for key " << key << ": " << e.what() << std::endl;
+        if (value.containsValueOfType<std::string>()) {
+            root[key] = value.get<std::string>();
+        } else if (value.containsValueOfType<uint32_t>()) {
+            root[key] = value.get<uint32_t>();
+        } else if (value.containsValueOfType<int32_t>()) {
+            root[key] = value.get<int32_t>();
+        } else if (value.containsValueOfType<bool>()) {
+            root[key] = value.get<bool>();
         }
     }
 
@@ -99,7 +96,7 @@ void ApplicationConfigObject::ReadConfiguration(const std::string& filePath) {
         } else if (val.isBool()) {
             dict[key] = sdbus::Variant(val.asBool());
         } else {
-            std::cerr << "Unknown type: " << key << std::endl;
+            throw std::runtime_error("Unknown type: " + key + " in file: " + filePath);
         }
     }
 }
@@ -137,35 +134,22 @@ ApplicationConfigObject::ApplicationConfigObject(std::unique_ptr<sdbus::IObject>
 
 void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>& appObjects,
                  sdbus::IConnection& conn, const std::string& folderPath) {
-    try {
-        for (const auto& entry : fs::directory_iterator(folderPath)) {
-            // если текущий файл не является папкой и имеет расширение .json
-            if (fs::is_regular_file(entry.status()) && entry.path().extension() == ".json") {
-                std::string applicationName = entry.path().stem().string();
+    for (const auto& entry : fs::directory_iterator(folderPath)) {
+        // если текущий файл не является папкой и имеет расширение .json
+        if (fs::is_regular_file(entry.status()) && entry.path().extension() == ".json") {
+            std::string applicationName = entry.path().stem().string();
 
-                std::cout << "file: " << entry.path() << std::endl;
-                std::cout << "application name: " << applicationName << std::endl;
+            std::cout << "file: " << entry.path() << std::endl;
+            std::cout << "application name: " << applicationName << std::endl;
 
-                try {
-                    // создаем объект DBus для текущего приложения
-                    std::string objectPath =
-                        "/com/system/configurationManager/Application/" + applicationName;
-                    auto object = sdbus::createObject(conn, sdbus::ObjectPath(objectPath));
+            // создаем объект DBus для текущего приложения
+            std::string objectPath =
+                "/com/system/configurationManager/Application/" + applicationName;
+            auto object = sdbus::createObject(conn, sdbus::ObjectPath(objectPath));
 
-                    // создаем объект приложения
-                    appObjects[entry.path()] =
-                        std::make_unique<ApplicationConfigObject>(std::move(object), entry.path());
-
-                } catch (const std::exception& e) {
-                    std::cerr << "Error creating object " << applicationName << ": " << e.what()
-                              << std::endl;
-                }
-            }
+            // создаем объект приложения
+            appObjects[entry.path()] =
+                std::make_unique<ApplicationConfigObject>(std::move(object), entry.path());
         }
-    } catch (const fs::filesystem_error& e) {
-        std::cerr << "Error reading directory: " << e.what() << std::endl;
-        exit(1);
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
     }
 }
