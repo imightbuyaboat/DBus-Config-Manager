@@ -72,10 +72,10 @@ void ApplicationConfigObject::SaveConfiguration() {
     }
 }
 
-void ApplicationConfigObject::ReadConfiguration(const std::string& filePath) {
-    std::ifstream file(filePath);
+void ApplicationConfigObject::ReadConfiguration() {
+    std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + filePath);
+        throw std::runtime_error("Failed to open file: " + path);
     }
 
     Json::Value root;
@@ -96,7 +96,7 @@ void ApplicationConfigObject::ReadConfiguration(const std::string& filePath) {
         } else if (val.isBool()) {
             dict[key] = sdbus::Variant(val.asBool());
         } else {
-            throw std::runtime_error("Unknown type: " + key + " in file: " + filePath);
+            throw std::runtime_error("Unknown type: " + key + " in file: " + path);
         }
     }
 }
@@ -129,7 +129,7 @@ ApplicationConfigObject::ApplicationConfigObject(std::unique_ptr<sdbus::IObject>
         .forInterface(sdbus::InterfaceName(interfaceName));
 
     // читаем файл конфигурации приложения
-    ReadConfiguration(filePath);
+    ReadConfiguration();
 }
 
 void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>& appObjects,

@@ -18,16 +18,32 @@ class Application {
     uint32_t Timeout;
     std::string TimeoutPhrase;
 
-    // функция цикла вывода фразы в консоль
+    /**
+     * @brief Выводит в консоль фразу TimeoutPhrase раз в Timeout мс.
+     */
     void Loop();
 
-    // обработчик сигнала configurationChanged
+    /**
+     * @brief Обрабатывает сигнал configurationChanged.
+     * @param dict Измененная конфигурация приложения.
+     */
     void configurationChangedSignalHandler(std::map<std::string, sdbus::Variant>& dict);
 
    public:
+    /**
+     * @brief Создает объект Application.
+     * @param filePath Путь к файлу конфигурации приложения.
+     * @param conn Соединение с сессионной шинной DBus.
+     */
     Application(const std::string& filePath, sdbus::IConnection& conn);
+
+    /**
+     * @brief Завершает работу потока с функцией Loop().
+     */
     ~Application();
 
-    // чтение конфигурации из файла
+    /**
+     * @brief Считывает конфигурацию из файла.
+     */
     void ReadConfigFromFile();
 };
