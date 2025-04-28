@@ -164,6 +164,7 @@ void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>
         }
     } catch (const fs::filesystem_error& e) {
         std::cerr << "Error reading directory: " << e.what() << std::endl;
+        exit(1);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
