@@ -26,7 +26,7 @@
 
    - подписывается на сигнал `com.system.configurationManager.Application.configurationChanged` у
      объекта `com.system.configurationManager.Application.confManagerApplication1` на сервисе
-     `com.system.configurationManager` и применяет новые параметры в случае их изменения
+     `com.system.configurationManager` и применяет новые параметры в случае их изменения;
 
    - имеет управляемую конфигурацию
      `~/com.system.configurationManager/confManagerApplication1.json`, в которой есть два параметра:
@@ -171,3 +171,11 @@
    ```
 
    После выполнения команды фраза "Please stop me" начнет выводится в терминале раз в 3000 мс.
+
+   Для вывода полной конфигурации приложения выполните команду:
+
+   ```bash
+   gdbus call --session --dest com.system.configurationManager \
+   --object-path /com/system/configurationManager/Application/confManagerApplication1 \
+   --method com.system.configurationManager.Application.Configuration.GetConfiguration
+   ```
