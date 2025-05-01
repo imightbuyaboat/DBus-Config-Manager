@@ -3,7 +3,9 @@
 
 #include <fstream>
 #include <map>
+#include <mutex>
 #include <string>
+#include <thread>
 
 // Объект приложения DBus
 class ApplicationConfigObject {
@@ -11,6 +13,7 @@ class ApplicationConfigObject {
     std::unique_ptr<sdbus::IObject> object;     // объект DBus
     std::map<std::string, sdbus::Variant> dict; // словарь
     std::string path; // путь к файлу конфигураций приложения
+    std::mutex mu;  // мютекст для словаря
 
     sdbus::InterfaceName interfaceName{"com.system.configurationManager.Application.Configuration"};
     sdbus::MethodName changeMethodName{"ChangeConfiguration"};
@@ -18,17 +21,16 @@ class ApplicationConfigObject {
     sdbus::SignalName signalName{"configurationChanged"};
 
     /**
-     * @brief Изменяем настройки конфигурации приложения.
-     * @param key Имя параметра.
-     * @param value Значение параметра.
+     * @brief Изменяет настройки конфигурации приложения.
+     * @param call Объект входящего вызова DBus метода.
      */
-    void ChangeConfiguration(const std::string& key, const sdbus::Variant& value);
+    void ChangeConfiguration(sdbus::MethodCall call);
 
     /**
      * @brief Возвращает полную конфигурацию приложения.
-     * @return Полная конфигурация приложения.
+     * @param call Объект входящего вызова DBus метода.
      */
-    std::map<std::string, sdbus::Variant> GetConfiguration() const;
+    void GetConfiguration(sdbus::MethodCall call);
 
     /**
      * @brief Сохраняет измененную конфигурацию приложения в файл конфигурации приложения.

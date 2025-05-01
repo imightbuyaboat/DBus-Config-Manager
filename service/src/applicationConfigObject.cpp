@@ -1,45 +1,82 @@
 #include "applicationConfigObject.h"
 
-void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
-                                                  const sdbus::Variant& value) {
-    // проверяем существует ли в словаре ключ key
-    auto it = dict.find(key);
-    if (it == dict.end()) {
-        throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
-                           "Incorrect key: " + key);
-    }
+void ApplicationConfigObject::ChangeConfiguration(sdbus::MethodCall call) {
+    std::string key;
+    sdbus::Variant value;
+    call >> key >> value;
 
-    // проверяем совпадают ли типы старого и нового значений параметра key
-    const sdbus::Variant& oldValue = it->second;
-    std::string oldType = oldValue.peekValueType();
-    std::string newType = value.peekValueType();
+    std::thread([this, key = std::move(key), value = std::move(value), call = std::move(call)]() {
+        sdbus::Variant oldValue;
 
-    if (oldType != newType) {
-        throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
-                           "Incorrect value for the key: " + key);
-    }
+        {
+            std::lock_guard<std::mutex> lock(mu);
 
-    dict[key] = value;
+            // проверяем существует ли в словаре ключ key
+            auto it = dict.find(key);
+            if (it == dict.end()) {
+                auto reply = call.createErrorReply(
+                    {sdbus::Error::Name("com.system.configurationManager.Error"),
+                     "Incorrect key: " + key});
+                reply.send();
+                return;
+            }
 
-    // сохраняем измененную конфигурацию в файл
-    try {
-        SaveConfiguration();
-    } catch (const std::exception& e) {
-        // возвращаем старое значение параметра в словарь
-        dict[key] = oldValue;
+            // проверяем совпадают ли типы старого и нового значений параметра key
+            oldValue = it->second;
+            std::string oldType = oldValue.peekValueType();
+            std::string newType = value.peekValueType();
 
-        throw sdbus::Error(sdbus::Error::Name("com.system.configurationManager.Error"),
-                           "Failed to save configuration: " + std::string(e.what()));
-    }
+            if (oldType != newType) {
+                auto reply = call.createErrorReply(
+                    {sdbus::Error::Name("com.system.configurationManager.Error"),
+                     "Incorrect value for the key: " + key});
+                reply.send();
+                return;
+            }
 
-    // создаем и отправляем сигнал об изменении настроек
-    auto signal = object->createSignal(interfaceName, signalName);
-    signal << dict;
-    object->emitSignal(signal);
+            dict[key] = value;
+        }
+
+        // сохраняем измененную конфигурацию в файл
+        try {
+            SaveConfiguration();
+        } catch (const std::exception& e) {
+            std::lock_guard<std::mutex> lock(mu);
+
+            // возвращаем старое значение параметра в словарь
+            dict[key] = oldValue;
+
+            auto reply =
+                call.createErrorReply({sdbus::Error::Name("com.system.configurationManager.Error"),
+                                       "Failed to save configuration: " + std::string(e.what())});
+            reply.send();
+            return;
+        }
+
+        auto reply = call.createReply();
+        reply.send();
+
+        // создаем и отправляем сигнал об изменении настроек
+        auto signal = object->createSignal(interfaceName, signalName);
+        {
+            std::lock_guard<std::mutex> lock(mu);
+
+            signal << dict;
+        }
+        object->emitSignal(signal);
+    }).detach();
 }
 
-std::map<std::string, sdbus::Variant> ApplicationConfigObject::GetConfiguration() const {
-    return dict;
+void ApplicationConfigObject::GetConfiguration(sdbus::MethodCall call) {
+    std::thread([this, call = std::move(call)]() {
+        auto reply = call.createReply();
+        {
+            std::lock_guard<std::mutex> lock(mu);
+
+            reply << dict;
+        }
+        reply.send();
+    }).detach();
 }
 
 void ApplicationConfigObject::SaveConfiguration() {
@@ -102,23 +139,28 @@ ApplicationConfigObject::ApplicationConfigObject(sdbus::IConnection& connection,
     : path(filePath) {
     object = sdbus::createObject(connection, objectPath);
 
-    // регистрируем метод ChangeConfiguration
+    // регистрируем методы и сигнал
     object
-        ->addVTable(sdbus::registerMethod(changeMethodName)
-                        .implementedAs([this](const std::string& key, const sdbus::Variant& value) {
-                            return this->ChangeConfiguration(key, value);
-                        }))
+        ->addVTable(sdbus::MethodVTableItem{
+                    changeMethodName,
+                        sdbus::Signature{"sv"},
+                        {},
+                        sdbus::Signature{""},
+                        {},
+                        [this](sdbus::MethodCall call) {
+                            this->ChangeConfiguration(std::move(call));
+                        },
+                        {}},
+                    sdbus::MethodVTableItem{
+                        getMethodName,
+                        sdbus::Signature{""},
+                        {},
+                        sdbus::Signature{"a{sv}"},
+                        {},
+                        [this](sdbus::MethodCall call) { this->GetConfiguration(std::move(call)); },
+                        {}},
+                    sdbus::SignalVTableItem{signalName, sdbus::Signature{"a{sv}"}, {}, {}})
         .forInterface(interfaceName);
-
-    // регистрируем метод GetConfiguration
-    object
-        ->addVTable(sdbus::registerMethod(getMethodName).implementedAs([this]() {
-            return this->GetConfiguration();
-        }))
-        .forInterface(interfaceName);
-
-    // регистрируем сигнал configurationChanged
-    object->addVTable(sdbus::registerSignal(signalName)).forInterface(interfaceName);
 
     // читаем файл конфигурации приложения
     ReadConfiguration();
