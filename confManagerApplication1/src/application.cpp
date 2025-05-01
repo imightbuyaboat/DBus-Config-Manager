@@ -3,11 +3,14 @@
 void Application::Loop() {
     // бесконечный цикл
     while (true) {
+        uint32_t timeout;
+
         // выводим фразу и определяем время сна
-        configMutex.lock();
-        uint32_t timeout = Timeout;
-        std::cout << TimeoutPhrase << std::endl;
-        configMutex.unlock();
+        {
+            std::lock_guard<std::mutex> lock(configMutex);
+            timeout = Timeout;
+            std::cout << TimeoutPhrase << std::endl;
+        }
 
         // засыпаем на timeout миллисекунд
         std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
@@ -32,10 +35,9 @@ void Application::configurationChangedSignalHandler(std::map<std::string, sdbus:
         throw std::runtime_error("Invalid configuration in body of signal: " + path);
     }
 
-    configMutex.lock();
+    std::lock_guard<std::mutex> lock(configMutex);
     this->Timeout = newTimeout;
     this->TimeoutPhrase = newTimeoutPhrase;
-    configMutex.unlock();
 }
 
 Application::Application(const std::string& filePath, sdbus::IConnection& conn) : path(filePath) {
@@ -44,18 +46,12 @@ Application::Application(const std::string& filePath, sdbus::IConnection& conn) 
     // создаем поток с бесконечным циклом
     loopThread = std::thread(&Application::Loop, this);
 
-    const char* serviceName = "com.system.configurationManager";
-    const char* objectPath = "/com/system/configurationManager/Application/confManagerApplication1";
-    const char* signalName = "configurationChanged";
-    const char* interfaceName = "com.system.configurationManager.Application.Configuration";
-
     // создаем прокси объекта приложения
-    proxy =
-        sdbus::createProxy(conn, sdbus::ServiceName(serviceName), sdbus::ObjectPath(objectPath));
+    proxy = sdbus::createProxy(conn, serviceName, objectPath);
 
     // подписываемся на сигнал configurationChanged
-    proxy->uponSignal(sdbus::SignalName(signalName))
-        .onInterface(sdbus::InterfaceName(interfaceName))
+    proxy->uponSignal(signalName)
+        .onInterface(interfaceName)
         .call([this](std::map<std::string, sdbus::Variant> dict) {
             try {
                 this->configurationChangedSignalHandler(dict);
@@ -101,8 +97,7 @@ void Application::ReadConfigFromFile() {
         throw std::runtime_error("Invalid configuration in file: " + path);
     }
 
-    configMutex.lock();
+    std::lock_guard<std::mutex> lock(configMutex);
     this->Timeout = newTimeout;
     this->TimeoutPhrase = newTimeoutPhrase;
-    configMutex.unlock();
 }

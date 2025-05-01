@@ -18,6 +18,12 @@ class Application {
     uint32_t Timeout;
     std::string TimeoutPhrase;
 
+    sdbus::ServiceName serviceName{"com.system.configurationManager"};
+    sdbus::ObjectPath objectPath{
+        "/com/system/configurationManager/Application/confManagerApplication1"};
+    sdbus::SignalName signalName{"configurationChanged"};
+    sdbus::InterfaceName interfaceName{"com.system.configurationManager.Application.Configuration"};
+
     /**
      * @brief Выводит в консоль фразу TimeoutPhrase раз в Timeout мс.
      */
