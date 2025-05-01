@@ -1,4 +1,4 @@
-#include "service.h"
+#include "applicationConfigObject.h"
 
 void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
                                                   const sdbus::Variant& value) {
@@ -33,10 +33,7 @@ void ApplicationConfigObject::ChangeConfiguration(const std::string& key,
     }
 
     // создаем и отправляем сигнал об изменении настроек
-    const char* interfaceName = "com.system.configurationManager.Application.Configuration";
-    const char* signalName = "configurationChanged";
-    auto signal =
-        object->createSignal(sdbus::InterfaceName(interfaceName), sdbus::SignalName(signalName));
+    auto signal = object->createSignal(interfaceName, signalName);
     signal << dict;
     object->emitSignal(signal);
 }
@@ -85,8 +82,6 @@ void ApplicationConfigObject::ReadConfiguration() {
     for (const auto& key : root.getMemberNames()) {
         const Json::Value& val = root[key];
 
-        std::cout << "\t" << key << ": " << val << std::endl;
-
         if (val.isUInt()) {
             dict[key] = sdbus::Variant(static_cast<uint32_t>(val.asUInt()));
         } else if (val.isInt()) {
@@ -101,55 +96,30 @@ void ApplicationConfigObject::ReadConfiguration() {
     }
 }
 
-ApplicationConfigObject::ApplicationConfigObject(std::unique_ptr<sdbus::IObject> obj,
-                                                 const std::string& filePath)
-    : object(std::move(obj)), path(filePath) {
-    const char* interfaceName = "com.system.configurationManager.Application.Configuration";
+ApplicationConfigObject::ApplicationConfigObject(sdbus::IConnection& connection,
+                                                 const std::string& filePath,
+                                                 sdbus::ObjectPath objectPath)
+    : path(filePath) {
+    object = sdbus::createObject(connection, objectPath);
 
     // регистрируем метод ChangeConfiguration
-    const char* methodName = "ChangeConfiguration";
     object
-        ->addVTable(sdbus::registerMethod(sdbus::MethodName(methodName))
+        ->addVTable(sdbus::registerMethod(changeMethodName)
                         .implementedAs([this](const std::string& key, const sdbus::Variant& value) {
                             return this->ChangeConfiguration(key, value);
                         }))
-        .forInterface(sdbus::InterfaceName(interfaceName));
+        .forInterface(interfaceName);
 
     // регистрируем метод GetConfiguration
-    methodName = "GetConfiguration";
     object
-        ->addVTable(sdbus::registerMethod(sdbus::MethodName(methodName)).implementedAs([this]() {
+        ->addVTable(sdbus::registerMethod(getMethodName).implementedAs([this]() {
             return this->GetConfiguration();
         }))
-        .forInterface(sdbus::InterfaceName(interfaceName));
+        .forInterface(interfaceName);
 
     // регистрируем сигнал configurationChanged
-    const char* signalName = "configurationChanged";
-    object->addVTable(sdbus::registerSignal(sdbus::SignalName(signalName)))
-        .forInterface(sdbus::InterfaceName(interfaceName));
+    object->addVTable(sdbus::registerSignal(signalName)).forInterface(interfaceName);
 
     // читаем файл конфигурации приложения
     ReadConfiguration();
-}
-
-void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>& appObjects,
-                 sdbus::IConnection& conn, const std::string& folderPath) {
-    for (const auto& entry : fs::directory_iterator(folderPath)) {
-        // если текущий файл не является папкой и имеет расширение .json
-        if (fs::is_regular_file(entry.status()) && entry.path().extension() == ".json") {
-            std::string applicationName = entry.path().stem().string();
-
-            std::cout << "file: " << entry.path() << std::endl;
-            std::cout << "application name: " << applicationName << std::endl;
-
-            // создаем объект DBus для текущего приложения
-            std::string objectPath =
-                "/com/system/configurationManager/Application/" + applicationName;
-            auto object = sdbus::createObject(conn, sdbus::ObjectPath(objectPath));
-
-            // создаем объект приложения
-            appObjects[entry.path()] =
-                std::make_unique<ApplicationConfigObject>(std::move(object), entry.path());
-        }
-    }
 }

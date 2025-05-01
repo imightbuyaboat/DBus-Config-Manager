@@ -1,19 +1,21 @@
 #include <json/json.h>
 #include <sdbus-c++/sdbus-c++.h>
-#include <filesystem>
+
 #include <fstream>
-#include <iostream>
 #include <map>
 #include <string>
 
-namespace fs = std::filesystem;
-
-// объект приложения
+// Объект приложения DBus
 class ApplicationConfigObject {
    private:
     std::unique_ptr<sdbus::IObject> object;     // объект DBus
     std::map<std::string, sdbus::Variant> dict; // словарь
     std::string path; // путь к файлу конфигураций приложения
+
+    sdbus::InterfaceName interfaceName{"com.system.configurationManager.Application.Configuration"};
+    sdbus::MethodName changeMethodName{"ChangeConfiguration"};
+    sdbus::MethodName getMethodName{"GetConfiguration"};
+    sdbus::SignalName signalName{"configurationChanged"};
 
     /**
      * @brief Изменяем настройки конфигурации приложения.
@@ -41,19 +43,12 @@ class ApplicationConfigObject {
    public:
     /**
      * @brief Создает объект ApplicationConfigObject.
-     * @param obj Указатель на объект sdbus::IObject.
+     * @param conncetion Подключение к сессионной шине DBus
      * @param filePath Путь к файлу конфигурации приложения.
+     * @param objectPath Путь к объекту DBus.
      */
-    ApplicationConfigObject(std::unique_ptr<sdbus::IObject> obj, const std::string& filePath);
+    ApplicationConfigObject(sdbus::IConnection& connection, const std::string& filePath,
+                            sdbus::ObjectPath objectPath);
 
     ~ApplicationConfigObject(){};
 };
-
-/**
- * @brief Инициализирует и регистрирует приложения в сервисе DBus.
- * @param appObjects Карта с парами <имя приложения, объект ApplicationConfigObject>.
- * @param conn Соединение с сессионной шинной DBus.
- * @param folderPath Папка конфигураций приложений.
- */
-void initObjects(std::map<std::string, std::unique_ptr<ApplicationConfigObject>>& appObjects,
-                 sdbus::IConnection& conn, const std::string& folderPath);

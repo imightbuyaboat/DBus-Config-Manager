@@ -18,17 +18,8 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        // подключаемся к сессионной шине DBus и задаем имя сервиса
-        auto connection = sdbus::createSessionBusConnection();
+        Service service(ConfigFolderPath);
 
-        const char* serviceName = "com.system.configurationManager";
-        connection->requestName(sdbus::ServiceName(serviceName));
-
-        // инициализируем объекты приложений из конфигурационныз файлов
-        std::map<std::string, std::unique_ptr<ApplicationConfigObject>> appObjects;
-        initObjects(appObjects, *connection, ConfigFolderPath);
-
-        connection->enterEventLoop();
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
         return 1;
