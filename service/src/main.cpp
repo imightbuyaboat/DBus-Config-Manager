@@ -4,20 +4,29 @@
 #include <string>
 #include "service.h"
 
-int main(int argc, char* argv[]) {
-    std::string ConfigFolderPath =
+const std::string getFolderPath(int argc, char* argv[]) {
+    std::string folderPath =
         std::getenv("HOME") + std::string("/com.system.configurationManager/");
+
+    if(argc != 1 && argc != 3) {
+        throw std::runtime_error("Incorrect number of arguments: " + std::to_string(argc));
+    }
 
     if (argc == 3) {
         if (std::string(argv[1]) == "-d") {
-            ConfigFolderPath = argv[2];
+            folderPath = argv[2];
         } else {
-            std::cerr << "Invalid flag: " << argv[1] << std::endl;
-            return 1;
+            throw std::runtime_error("Invalid flag: " + std::string(argv[1]));
         }
     }
 
+    return folderPath;
+}
+
+int main(int argc, char* argv[]) {
     try {
+        auto ConfigFolderPath = getFolderPath(argc, argv);
+
         Service service(ConfigFolderPath);
 
     } catch (const std::exception& e) {
