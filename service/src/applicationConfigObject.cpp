@@ -8,6 +8,9 @@ void ApplicationConfigObject::ChangeConfiguration(sdbus::MethodCall call) {
     std::thread([this, key = std::move(key), value = std::move(value), call = std::move(call)]() {
         sdbus::Variant oldValue;
 
+        // создаем сигнал
+        auto signal = object->createSignal(interfaceName, signalName);
+
         {
             std::lock_guard<std::mutex> lock(mu);
 
@@ -35,34 +38,27 @@ void ApplicationConfigObject::ChangeConfiguration(sdbus::MethodCall call) {
             }
 
             dict[key] = value;
-        }
 
-        // сохраняем измененную конфигурацию в файл
-        try {
-            SaveConfiguration();
-        } catch (const std::exception& e) {
-            std::lock_guard<std::mutex> lock(mu);
+            // сохраняем измененную конфигурацию в файл
+            try {
+                SaveConfiguration();
+            } catch (const std::exception& e) {
+                // возвращаем старое значение параметра в словарь
+                dict[key] = oldValue;
 
-            // возвращаем старое значение параметра в словарь
-            dict[key] = oldValue;
+                auto reply =
+                    call.createErrorReply({sdbus::Error::Name("com.system.configurationManager.Error"),
+                                        "Failed to save configuration: " + std::string(e.what())});
+                reply.send();
+                return;
+            }
 
-            auto reply =
-                call.createErrorReply({sdbus::Error::Name("com.system.configurationManager.Error"),
-                                       "Failed to save configuration: " + std::string(e.what())});
-            reply.send();
-            return;
+            signal << dict;
         }
 
         auto reply = call.createReply();
         reply.send();
 
-        // создаем и отправляем сигнал об изменении настроек
-        auto signal = object->createSignal(interfaceName, signalName);
-        {
-            std::lock_guard<std::mutex> lock(mu);
-
-            signal << dict;
-        }
         object->emitSignal(signal);
     }).detach();
 }
@@ -79,7 +75,7 @@ void ApplicationConfigObject::GetConfiguration(sdbus::MethodCall call) {
     }).detach();
 }
 
-void ApplicationConfigObject::SaveConfiguration() {
+void ApplicationConfigObject::SaveConfiguration() {    
     std::ofstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + path);
@@ -107,6 +103,8 @@ void ApplicationConfigObject::SaveConfiguration() {
 }
 
 void ApplicationConfigObject::ReadConfiguration() {
+    std::lock_guard<std::mutex> lock(mu);
+
     std::ifstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + path);
