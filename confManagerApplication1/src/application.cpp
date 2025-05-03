@@ -40,14 +40,16 @@ void Application::configurationChangedSignalHandler(std::map<std::string, sdbus:
     this->TimeoutPhrase = newTimeoutPhrase;
 }
 
-Application::Application(const std::string& filePath, sdbus::IConnection& conn) : path(filePath) {
+Application::Application(const std::string& filePath) : path(filePath) {
+    connection = sdbus::createSessionBusConnection();
+
     ReadConfigFromFile();
 
     // создаем поток с бесконечным циклом
     loopThread = std::thread(&Application::Loop, this);
 
     // создаем прокси объекта приложения
-    proxy = sdbus::createProxy(conn, serviceName, objectPath);
+    proxy = sdbus::createProxy(*connection, serviceName, objectPath);
 
     // подписываемся на сигнал configurationChanged
     proxy->uponSignal(signalName)
@@ -100,4 +102,8 @@ void Application::ReadConfigFromFile() {
     std::lock_guard<std::mutex> lock(configMutex);
     this->Timeout = newTimeout;
     this->TimeoutPhrase = newTimeoutPhrase;
+}
+
+void Application::StartEventLoop() {
+    connection->enterEventLoop();
 }

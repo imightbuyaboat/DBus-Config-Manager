@@ -10,6 +10,7 @@
 // класс приложения confManagerApplication1
 class Application {
    private:
+    std::unique_ptr<sdbus::IConnection> connection; // соединение с сессионной шиной DBus
     std::string path; // путь конфигурационного файла
     std::mutex configMutex; // мьютекс для доступа к переменным конфигурации
     std::unique_ptr<sdbus::IProxy> proxy; // прокси
@@ -41,7 +42,7 @@ class Application {
      * @param filePath Путь к файлу конфигурации приложения.
      * @param conn Соединение с сессионной шинной DBus.
      */
-    Application(const std::string& filePath, sdbus::IConnection& conn);
+    Application(const std::string& filePath);
 
     /**
      * @brief Завершает работу потока с функцией Loop().
@@ -52,4 +53,9 @@ class Application {
      * @brief Считывает конфигурацию из файла.
      */
     void ReadConfigFromFile();
+
+    /**
+     * @brief Запускает DBus цикл.
+     */
+    void StartEventLoop();
 };
