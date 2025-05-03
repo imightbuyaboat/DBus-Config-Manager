@@ -6,9 +6,6 @@ Service::Service(const std::string& folderPath) : configFolderPath(folderPath) {
     connection->requestName(serviceName);
 
     initObjects();
-
-    std::cout << "Starting DBus service" << std::endl;
-    connection->enterEventLoop();
 }
 
 void Service::initObjects() {
@@ -28,4 +25,9 @@ void Service::initObjects() {
             appObjects.push_back(std::move(applicationObject));
         }
     }
+}
+
+void Service::StartEventLoop() {
+    std::cout << "Starting DBus service" << std::endl;
+    connection->enterEventLoop();
 }

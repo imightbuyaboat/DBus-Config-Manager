@@ -46,9 +46,9 @@ void ApplicationConfigObject::ChangeConfiguration(sdbus::MethodCall call) {
                 // возвращаем старое значение параметра в словарь
                 dict[key] = oldValue;
 
-                auto reply =
-                    call.createErrorReply({sdbus::Error::Name("com.system.configurationManager.Error"),
-                                        "Failed to save configuration: " + std::string(e.what())});
+                auto reply = call.createErrorReply(
+                    {sdbus::Error::Name("com.system.configurationManager.Error"),
+                     "Failed to save configuration: " + std::string(e.what())});
                 reply.send();
                 return;
             }
@@ -75,7 +75,7 @@ void ApplicationConfigObject::GetConfiguration(sdbus::MethodCall call) {
     }).detach();
 }
 
-void ApplicationConfigObject::SaveConfiguration() {    
+void ApplicationConfigObject::SaveConfiguration() {
     std::ofstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + path);
@@ -139,16 +139,15 @@ ApplicationConfigObject::ApplicationConfigObject(sdbus::IConnection& connection,
 
     // регистрируем методы и сигнал
     object
-        ->addVTable(sdbus::MethodVTableItem{
-                    changeMethodName,
-                        sdbus::Signature{"sv"},
-                        {},
-                        sdbus::Signature{""},
-                        {},
-                        [this](sdbus::MethodCall call) {
-                            this->ChangeConfiguration(std::move(call));
-                        },
-                        {}},
+        ->addVTable(sdbus::MethodVTableItem{changeMethodName,
+                                            sdbus::Signature{"sv"},
+                                            {},
+                                            sdbus::Signature{""},
+                                            {},
+                                            [this](sdbus::MethodCall call) {
+                                                this->ChangeConfiguration(std::move(call));
+                                            },
+                                            {}},
                     sdbus::MethodVTableItem{
                         getMethodName,
                         sdbus::Signature{""},

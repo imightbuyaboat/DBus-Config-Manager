@@ -13,7 +13,7 @@ class ApplicationConfigObject {
     std::unique_ptr<sdbus::IObject> object;     // объект DBus
     std::map<std::string, sdbus::Variant> dict; // словарь
     std::string path; // путь к файлу конфигураций приложения
-    std::mutex mu;  // мютекст для словаря
+    std::mutex mu;    // мютекст для словаря
 
     sdbus::InterfaceName interfaceName{"com.system.configurationManager.Application.Configuration"};
     sdbus::MethodName changeMethodName{"ChangeConfiguration"};

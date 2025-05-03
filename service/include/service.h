@@ -29,4 +29,9 @@ class Service {
      * @param folderPath Путь к папке конфигураций.
      */
     Service(const std::string& folderPath);
+
+    /**
+     * @brief Запускает DBus цикл.
+     */
+    void StartEventLoop();
 };

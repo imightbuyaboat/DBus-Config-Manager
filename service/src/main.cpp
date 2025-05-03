@@ -5,10 +5,9 @@
 #include "service.h"
 
 const std::string getFolderPath(int argc, char* argv[]) {
-    std::string folderPath =
-        std::getenv("HOME") + std::string("/com.system.configurationManager/");
+    std::string folderPath = std::getenv("HOME") + std::string("/com.system.configurationManager/");
 
-    if(argc != 1 && argc != 3) {
+    if (argc != 1 && argc != 3) {
         throw std::runtime_error("Incorrect number of arguments: " + std::to_string(argc));
     }
 
@@ -28,6 +27,8 @@ int main(int argc, char* argv[]) {
         auto ConfigFolderPath = getFolderPath(argc, argv);
 
         Service service(ConfigFolderPath);
+
+        service.StartEventLoop();
 
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
